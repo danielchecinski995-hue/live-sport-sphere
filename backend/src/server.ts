@@ -34,13 +34,27 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Logging middleware (development)
-if (process.env.NODE_ENV === 'development') {
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    console.log(`${req.method} ${req.path}`);
-    next();
+// Structured logging middleware (Cloud Logging compatible)
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const log = {
+      severity: res.statusCode >= 500 ? 'ERROR' : res.statusCode >= 400 ? 'WARNING' : 'INFO',
+      message: `${req.method} ${req.path} ${res.statusCode} ${duration}ms`,
+      httpRequest: {
+        requestMethod: req.method,
+        requestUrl: req.originalUrl,
+        status: res.statusCode,
+        latency: `${duration / 1000}s`,
+        userAgent: req.get('user-agent'),
+        remoteIp: req.ip,
+      },
+    };
+    console.log(JSON.stringify(log));
   });
-}
+  next();
+});
 
 // ========================================
 // Routes
@@ -114,7 +128,12 @@ app.use((req: Request, res: Response) => {
 
 // Global error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('❌ Error:', err);
+  console.log(JSON.stringify({
+    severity: 'ERROR',
+    message: `Unhandled error: ${err.message}`,
+    stack: err.stack,
+    httpRequest: { requestMethod: req.method, requestUrl: req.originalUrl },
+  }));
 
   res.status(500).json({
     error: 'Internal Server Error',
