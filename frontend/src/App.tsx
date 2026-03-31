@@ -4,6 +4,8 @@
 
 import { useState, useEffect } from 'react';
 import { tournamentsAPI } from './services/api';
+import { useAuth } from './contexts/AuthContext';
+import { AuthPage } from './components/AuthPage';
 
 interface Tournament {
   id: string;
@@ -15,10 +17,20 @@ interface Tournament {
 }
 
 function App() {
+  const { user, loading: authLoading, signOut } = useAuth();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [publicTournaments, setPublicTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Show auth page if not logged in
+  if (authLoading) {
+    return <div style={{ padding: '20px', textAlign: 'center' }}>Ladowanie...</div>;
+  }
+
+  if (!user) {
+    return <AuthPage />;
+  }
 
   // Form state
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -91,8 +103,18 @@ function App() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>Live Sport Sphere 🏆</h1>
-      <p>System zarządzania turniejami sportowymi</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div>
+          <h1 style={{ margin: 0 }}>Live Sport Sphere</h1>
+          <p style={{ margin: '4px 0 0', color: '#666' }}>Witaj, {user.displayName || user.email}</p>
+        </div>
+        <button
+          onClick={signOut}
+          style={{ padding: '8px 16px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+        >
+          Wyloguj
+        </button>
+      </div>
 
       {error && (
         <div style={{ background: '#ffebee', padding: '10px', marginBottom: '20px', border: '1px solid #f44336' }}>

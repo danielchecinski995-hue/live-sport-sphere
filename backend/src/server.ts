@@ -4,14 +4,15 @@
  */
 
 import express, { Request, Response, NextFunction } from 'express';
-import session from 'express-session';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { pool } from './config/database';
+import { requireAuth, optionalAuth } from './middleware/auth';
 import playerRoutes from './routes/playerRoutes';
 import tournamentRoutes from './routes/tournamentRoutes';
 import teamRoutes from './routes/teamRoutes';
 import matchRoutes from './routes/matchRoutes';
+import authRoutes from './routes/authRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -23,27 +24,15 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 // ========================================
 
-// CORS - pozwala na requesty z frontendu
+// CORS - pozwala na requesty z frontendu i aplikacji mobilnej
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:8081'], // Vite + Expo web
-  credentials: true // Pozwala na cookies
+  origin: true, // Allow all origins (mobile app + web)
+  credentials: true
 }));
 
 // Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Session management (bez JWT - prostsze!)
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production', // HTTPS tylko w produkcji
-    httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 24 * 7 // 7 dni
-  }
-}));
 
 // Logging middleware (development)
 if (process.env.NODE_ENV === 'development') {
@@ -102,11 +91,13 @@ app.get('/api/test/organizer', async (req: Request, res: Response) => {
   }
 });
 
-// API routes
+// Auth routes
+app.use('/api/auth', authRoutes);
+
+// API routes (public read, auth required for write)
 app.use('/api/players', playerRoutes);
 app.use('/api/tournaments', tournamentRoutes);
-app.use('/api', teamRoutes); // Teams routes include /tournaments/:id/teams and /teams/:id
-
+app.use('/api', teamRoutes);
 app.use('/api', matchRoutes);
 
 // ========================================
