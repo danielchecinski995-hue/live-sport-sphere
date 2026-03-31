@@ -3,12 +3,13 @@ name: Deploy to Cloud Run
 on:
   push:
     branches:
-      - main
+      - master
       - dev
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   GCP_REGION: europe-west1
+  CLOUD_SQL_INSTANCE: live-sport-sphere:europe-west1:live-sport-sphere-db
 
 jobs:
   test:
@@ -51,15 +52,19 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Set environment suffix
+      - name: Set environment config
         id: env
         run: |
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
             echo "suffix=" >> $GITHUB_OUTPUT
             echo "env_name=production" >> $GITHUB_OUTPUT
+            echo "db_name=live_sport_sphere" >> $GITHUB_OUTPUT
+            echo "db_password=${{ secrets.DB_PASSWORD_PROD }}" >> $GITHUB_OUTPUT
           else
             echo "suffix=-staging" >> $GITHUB_OUTPUT
             echo "env_name=staging" >> $GITHUB_OUTPUT
+            echo "db_name=live_sport_sphere_staging" >> $GITHUB_OUTPUT
+            echo "db_password=${{ secrets.DB_PASSWORD_STAGING }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Deploy backend to Cloud Run
@@ -70,7 +75,8 @@ jobs:
             --region ${{ env.GCP_REGION }} \
             --project ${{ env.GCP_PROJECT_ID }} \
             --allow-unauthenticated \
-            --set-env-vars "NODE_ENV=${{ steps.env.outputs.env_name }}" \
+            --set-cloudsql-instances ${{ env.CLOUD_SQL_INSTANCE }} \
+            --set-env-vars "NODE_ENV=${{ steps.env.outputs.env_name }},INSTANCE_CONNECTION_NAME=${{ env.CLOUD_SQL_INSTANCE }},DB_NAME=${{ steps.env.outputs.db_name }},DB_USER=postgres,DB_PASSWORD=${{ steps.env.outputs.db_password }}" \
             --quiet
 
   deploy-frontend:
@@ -95,7 +101,7 @@ jobs:
       - name: Set environment suffix
         id: env
         run: |
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
             echo "suffix=" >> $GITHUB_OUTPUT
           else
             echo "suffix=-staging" >> $GITHUB_OUTPUT
