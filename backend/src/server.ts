@@ -145,6 +145,8 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 // Server Start
 // ========================================
 
+export { app };
+
 app.listen(PORT, () => {
   console.log('\n🚀 Live Sport Sphere Backend Server');
   console.log(`📡 Server running on http://localhost:${PORT}`);

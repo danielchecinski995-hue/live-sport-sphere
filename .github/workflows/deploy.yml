@@ -29,9 +29,8 @@ jobs:
       - name: Build backend
         run: cd backend && npm run build
 
-      # TODO: Add tests in Module 7
-      # - name: Run tests
-      #   run: cd backend && npm test
+      - name: Run tests
+        run: cd backend && npm test
 
   deploy-backend:
     needs: test
