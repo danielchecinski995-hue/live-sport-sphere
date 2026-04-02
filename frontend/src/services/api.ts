@@ -3,8 +3,6 @@
  * Fetch API communication with backend
  */
 
-import { getAuth } from 'firebase/auth';
-
 const API_BASE = '/api';
 
 interface FetchOptions extends RequestInit {
@@ -14,16 +12,10 @@ interface FetchOptions extends RequestInit {
 async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
   const url = `${API_BASE}${endpoint}`;
 
-  // Get Firebase auth token
-  const auth = getAuth();
-  const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-
   const config: RequestInit = {
     ...options,
-    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   };

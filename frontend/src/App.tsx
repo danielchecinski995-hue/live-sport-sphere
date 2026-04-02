@@ -1,6 +1,4 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './contexts/AuthContext';
-import { AuthPage } from './components/AuthPage';
 import { Dashboard } from './pages/Dashboard';
 import { TournamentDetail } from './pages/TournamentDetail';
 import { MatchDetail } from './pages/MatchDetail';
@@ -9,21 +7,6 @@ import { RefereeDashboard } from './pages/RefereeDashboard';
 import { Navbar } from './components/Navbar';
 
 function App() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.spinner} />
-        <p>Ladowanie...</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <AuthPage />;
-  }
-
   return (
     <div style={styles.appContainer}>
       <Navbar />
@@ -42,22 +25,6 @@ function App() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100vh',
-    fontFamily: 'Arial, sans-serif',
-  },
-  spinner: {
-    width: 40,
-    height: 40,
-    border: '4px solid #e5e7eb',
-    borderTop: '4px solid #2563eb',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
-  },
   appContainer: {
     minHeight: '100vh',
     background: '#f3f4f6',

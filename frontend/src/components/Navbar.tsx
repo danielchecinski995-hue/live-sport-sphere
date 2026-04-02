@@ -1,8 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 
 export function Navbar() {
-  const { user, signOut } = useAuth();
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
@@ -24,10 +22,6 @@ export function Navbar() {
           >
             Tryb Sedziego
           </Link>
-          <span style={styles.user}>{user?.displayName || user?.email}</span>
-          <button onClick={signOut} style={styles.logoutBtn}>
-            Wyloguj
-          </button>
         </div>
       </div>
     </nav>
@@ -70,18 +64,5 @@ const styles: Record<string, React.CSSProperties> = {
   activeLink: {
     color: 'white',
     background: 'rgba(255,255,255,0.15)',
-  },
-  user: {
-    color: '#94a3b8',
-    fontSize: 13,
-  },
-  logoutBtn: {
-    background: '#ef4444',
-    color: 'white',
-    border: 'none',
-    padding: '6px 14px',
-    borderRadius: 6,
-    cursor: 'pointer',
-    fontSize: 13,
   },
 };
