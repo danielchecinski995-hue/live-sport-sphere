@@ -3,6 +3,8 @@
  * Fetch API communication with backend
  */
 
+import { getAuth } from 'firebase/auth';
+
 const API_BASE = '/api';
 
 interface FetchOptions extends RequestInit {
@@ -12,11 +14,16 @@ interface FetchOptions extends RequestInit {
 async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
   const url = `${API_BASE}${endpoint}`;
 
+  // Get Firebase auth token
+  const auth = getAuth();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+
   const config: RequestInit = {
     ...options,
-    credentials: 'include', // Wysyła cookies
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   };
@@ -33,6 +40,12 @@ async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
   }
 
   return response.json();
+}
+
+// Helper to extract data array from {success, count, data} responses
+async function fetchData(endpoint: string, options: FetchOptions = {}) {
+  const result = await fetchAPI(endpoint, options);
+  return result.data ?? result;
 }
 
 // ========================================
@@ -52,10 +65,13 @@ export const playersAPI = {
 // ========================================
 
 export const tournamentsAPI = {
-  getAll: () => fetchAPI('/tournaments'),
-  getPublic: () => fetchAPI('/tournaments/public'),
-  getById: (id: string) => fetchAPI(`/tournaments/${id}`),
-  getByShareCode: (code: string) => fetchAPI(`/tournaments/code/${code}`),
+  getAll: () => fetchData('/tournaments'),
+  getPublic: () => fetchData('/tournaments?is_public=true'),
+  getById: (id: string) => fetchData(`/tournaments/${id}`),
+  getByShareCode: (code: string) => fetchData(`/tournaments/code/${code}`),
+  getTeams: (id: string) => fetchData(`/tournaments/${id}/teams`),
+  getMatches: (id: string) => fetchData(`/tournaments/${id}/matches`),
+  getStandings: (id: string) => fetchData(`/tournaments/${id}/standings`),
   create: (data: {
     name: string;
     format_type: string;
@@ -72,7 +88,7 @@ export const tournamentsAPI = {
 
 export const teamsAPI = {
   getByTournament: (tournamentId: string) =>
-    fetchAPI(`/tournaments/${tournamentId}/teams`),
+    fetchData(`/tournaments/${tournamentId}/teams`),
   getById: (id: string, includePlayers = false) =>
     fetchAPI(`/teams/${id}?include_players=${includePlayers}`),
   create: (tournamentId: string, data: { name: string; player_ids?: string[] }) =>
@@ -83,4 +99,26 @@ export const teamsAPI = {
       body: { player_ids: playerIds },
     }),
   delete: (id: string) => fetchAPI(`/teams/${id}`, { method: 'DELETE' }),
+};
+
+// ========================================
+// Matches API
+// ========================================
+
+export const matchesAPI = {
+  getById: (id: string) => fetchData(`/matches/${id}`),
+  getTeams: (id: string) => fetchData(`/matches/${id}/teams`),
+  getGoalScorers: (id: string) => fetchData(`/matches/${id}/goal-scorers`),
+  getCards: (id: string) => fetchData(`/matches/${id}/cards`),
+  getSubstitutions: (id: string) => fetchData(`/matches/${id}/substitutions`),
+  addGoalScorer: (matchId: string, data: { player_id: string; team_id: string; is_own_goal?: boolean }) =>
+    fetchAPI(`/matches/${matchId}/goal-scorers`, { method: 'POST', body: data }),
+  addCard: (matchId: string, data: { player_id: string; team_id: string; card_type: string; minute?: number }) =>
+    fetchAPI(`/matches/${matchId}/cards`, { method: 'POST', body: data }),
+  addSubstitution: (matchId: string, data: { teamId: string; playerOutId: string; playerInId: string; minute?: number }) =>
+    fetchAPI(`/matches/${matchId}/substitutions`, { method: 'POST', body: data }),
+  updateStatus: (matchId: string, status: string) =>
+    fetchAPI(`/matches/${matchId}/status`, { method: 'PUT', body: { status } }),
+  updateResult: (matchId: string, data: { home_score: number; away_score: number; goal_scorers?: any[] }) =>
+    fetchAPI(`/matches/${matchId}/result`, { method: 'PUT', body: data }),
 };
