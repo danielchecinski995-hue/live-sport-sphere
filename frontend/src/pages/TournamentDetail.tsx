@@ -187,7 +187,7 @@ export function TournamentDetail() {
                   <td style={td}>{s.position}</td>
                   <td style={{ ...td, textAlign: 'left' as const }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <TeamLogo logoUrl={s.team_logo_url} teamName={s.team_name} size={24} />
+                      <TeamLogo logoUrl={s.team_logo_url || (s as any).team_logo} teamName={s.team_name} size={24} />
                       {s.team_name}
                     </div>
                   </td>

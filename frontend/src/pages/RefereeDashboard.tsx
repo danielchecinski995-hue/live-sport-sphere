@@ -165,8 +165,8 @@ function RefereeMode({ match: initialMatch, onClose }: { match: Match; onClose: 
         matchesAPI.getCards(match.id),
       ]);
       if (teams) {
-        setHomeTeam(teams.homeTeam || teams.home_team || null);
-        setAwayTeam(teams.awayTeam || teams.away_team || null);
+        setHomeTeam(teams.homeTeam || teams.home_team || teams.home || null);
+        setAwayTeam(teams.awayTeam || teams.away_team || teams.away || null);
       }
       setScorers(Array.isArray(gs) ? gs : []);
       setCards(Array.isArray(c) ? c : []);
