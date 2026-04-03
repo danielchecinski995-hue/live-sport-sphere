@@ -13,7 +13,7 @@ export class TournamentModel {
    */
   static async findByCreator(creatorId: string): Promise<Tournament[]> {
     const result = await pool.query(
-      `SELECT id, name, creator_id, format_type, share_code, status, config, created_at
+      `SELECT id, name, creator_id, format_type, share_code, status, config, referees, created_at
        FROM tournaments
        WHERE creator_id = $1
        ORDER BY created_at DESC`,
@@ -28,7 +28,7 @@ export class TournamentModel {
    */
   static async findAllPublic(limit: number = 20): Promise<Tournament[]> {
     const result = await pool.query(
-      `SELECT id, name, creator_id, format_type, share_code, status, config, created_at
+      `SELECT id, name, creator_id, format_type, share_code, status, config, referees, created_at
        FROM tournaments
        WHERE status IN ('active', 'finished')
        ORDER BY created_at DESC
@@ -44,7 +44,7 @@ export class TournamentModel {
    */
   static async findById(tournamentId: string): Promise<Tournament | null> {
     const result = await pool.query(
-      `SELECT id, name, creator_id, format_type, share_code, status, config, created_at
+      `SELECT id, name, creator_id, format_type, share_code, status, config, referees, created_at
        FROM tournaments
        WHERE id = $1`,
       [tournamentId]
@@ -58,7 +58,7 @@ export class TournamentModel {
    */
   static async findByShareCode(shareCode: string): Promise<Tournament | null> {
     const result = await pool.query(
-      `SELECT id, name, creator_id, format_type, share_code, status, config, created_at
+      `SELECT id, name, creator_id, format_type, share_code, status, config, referees, created_at
        FROM tournaments
        WHERE share_code = $1`,
       [shareCode]
@@ -94,10 +94,10 @@ export class TournamentModel {
     }
 
     const result = await pool.query(
-      `INSERT INTO tournaments (creator_id, name, format_type, share_code, status, config)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, name, creator_id, format_type, share_code, status, config, created_at`,
-      [creatorId, name, formatType, shareCode, 'draft', JSON.stringify(config)]
+      `INSERT INTO tournaments (creator_id, name, format_type, share_code, status, config, referees)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, name, creator_id, format_type, share_code, status, config, referees, created_at`,
+      [creatorId, name, formatType, shareCode, 'draft', JSON.stringify(config), JSON.stringify([])]
     );
 
     return result.rows[0];
@@ -116,7 +116,7 @@ export class TournamentModel {
       `UPDATE tournaments
        SET name = $1, format_type = $2, config = $3
        WHERE id = $4
-       RETURNING id, name, creator_id, format_type, share_code, status, config, created_at`,
+       RETURNING id, name, creator_id, format_type, share_code, status, config, referees, created_at`,
       [name, formatType, JSON.stringify(config), tournamentId]
     );
 
@@ -134,7 +134,7 @@ export class TournamentModel {
       `UPDATE tournaments
        SET status = $1
        WHERE id = $2
-       RETURNING id, name, creator_id, format_type, share_code, status, config, created_at`,
+       RETURNING id, name, creator_id, format_type, share_code, status, config, referees, created_at`,
       [status, tournamentId]
     );
 
@@ -151,6 +151,15 @@ export class TournamentModel {
     );
 
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  static async updateReferees(tournamentId: string, referees: string[]): Promise<Tournament | null> {
+    const result = await pool.query(
+      `UPDATE tournaments SET referees = $1 WHERE id = $2
+       RETURNING id, name, creator_id, format_type, share_code, status, config, referees, created_at`,
+      [JSON.stringify(referees), tournamentId]
+    );
+    return result.rows[0] || null;
   }
 
   /**
@@ -171,7 +180,7 @@ export class TournamentModel {
   static async search(query: string, limit: number = 20): Promise<Tournament[]> {
     const searchTerm = `%${query}%`;
     const result = await pool.query(
-      `SELECT id, name, creator_id, format_type, share_code, status, config, created_at
+      `SELECT id, name, creator_id, format_type, share_code, status, config, referees, created_at
        FROM tournaments
        WHERE status IN ('active', 'finished')
          AND LOWER(name) LIKE LOWER($1)

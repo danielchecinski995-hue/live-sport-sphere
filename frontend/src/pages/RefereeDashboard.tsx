@@ -165,8 +165,12 @@ function RefereeMode({ match: initialMatch, onClose }: { match: Match; onClose: 
         matchesAPI.getCards(match.id),
       ]);
       if (teams) {
-        setHomeTeam(teams.homeTeam || teams.home_team || teams.home || null);
-        setAwayTeam(teams.awayTeam || teams.away_team || teams.away || null);
+        const home = teams.homeTeam || teams.home_team || teams.home || null;
+        const away = teams.awayTeam || teams.away_team || teams.away || null;
+        if (home) home.id = home.id || home.team_id;
+        if (away) away.id = away.id || away.team_id;
+        setHomeTeam(home);
+        setAwayTeam(away);
       }
       setScorers(Array.isArray(gs) ? gs : []);
       setCards(Array.isArray(c) ? c : []);
@@ -200,11 +204,11 @@ function RefereeMode({ match: initialMatch, onClose }: { match: Match; onClose: 
   };
 
   const handleEndMatch = async () => {
-    if (!confirm('Czy na pewno chcesz zakonczyc mecz?')) return;
     try {
       await matchesAPI.updateStatus(match.id, 'completed');
       setMatch({ ...match, status: 'completed' });
     } catch (err) {
+      console.error('End match error:', err);
       alert('Blad konczenia meczu');
     }
   };

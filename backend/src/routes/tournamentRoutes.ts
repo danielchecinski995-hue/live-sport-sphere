@@ -63,6 +63,7 @@ router.put('/:id', TournamentController.update);
  * @access  Public (później będzie require auth + creator only)
  */
 router.patch('/:id/status', TournamentController.updateStatus);
+router.patch('/:id/referees', TournamentController.updateReferees);
 
 /**
  * @route   DELETE /api/tournaments/:id

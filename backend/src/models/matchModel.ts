@@ -1,6 +1,46 @@
 import { query } from '../config/database';
 
 export class MatchModel {
+  static async create(tournamentId: string, homeTeamId: string, awayTeamId: string, matchDate?: string) {
+    // Get or create phase for this tournament
+    let phaseResult = await query(
+      `SELECT id FROM phases WHERE tournament_id = $1 LIMIT 1`,
+      [tournamentId]
+    );
+    if (phaseResult.rows.length === 0) {
+      phaseResult = await query(
+        `INSERT INTO phases (tournament_id, phase_type, phase_order, status)
+         VALUES ($1, 'group_stage', 1, 'active') RETURNING id`,
+        [tournamentId]
+      );
+    }
+    const phaseId = phaseResult.rows[0].id;
+
+    // Get next match_order
+    const orderResult = await query(
+      `SELECT COALESCE(MAX(match_order), 0) + 1 as next_order FROM matches WHERE phase_id = $1`,
+      [phaseId]
+    );
+    const matchOrder = orderResult.rows[0].next_order;
+
+    const result = await query(
+      `INSERT INTO matches (id, phase_id, home_team_id, away_team_id, match_date, match_order, status, home_score, away_score)
+       VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, 'scheduled', 0, 0)
+       RETURNING *`,
+      [phaseId, homeTeamId, awayTeamId, matchDate || null, matchOrder]
+    );
+    return result.rows[0];
+  }
+
+  static async delete(matchId: string) {
+    // Delete related records first
+    await query(`DELETE FROM goal_scorers WHERE match_id = $1`, [matchId]);
+    await query(`DELETE FROM match_cards WHERE match_id = $1`, [matchId]);
+    await query(`DELETE FROM substitutions WHERE match_id = $1`, [matchId]);
+    const result = await query(`DELETE FROM matches WHERE id = $1 RETURNING id`, [matchId]);
+    return result.rows.length > 0;
+  }
+
   static async findByTournamentId(tournamentId: string) {
     const result = await query(
       `SELECT m.*,
@@ -67,9 +107,12 @@ export class MatchModel {
       [away_team_id]
     );
 
+    const homeTeamInfo = await query(`SELECT id, name, logo_url FROM teams WHERE id = $1`, [home_team_id]);
+    const awayTeamInfo = await query(`SELECT id, name, logo_url FROM teams WHERE id = $1`, [away_team_id]);
+
     return {
-      home: { team_id: home_team_id, players: homePlayers.rows },
-      away: { team_id: away_team_id, players: awayPlayers.rows },
+      home: { id: home_team_id, team_id: home_team_id, ...homeTeamInfo.rows[0], players: homePlayers.rows },
+      away: { id: away_team_id, team_id: away_team_id, ...awayTeamInfo.rows[0], players: awayPlayers.rows },
     };
   }
 
@@ -91,6 +134,26 @@ export class MatchModel {
       `INSERT INTO goal_scorers (match_id, player_id, team_id, is_own_goal) VALUES ($1, $2, $3, $4) RETURNING *`,
       [matchId, playerId, teamId, isOwnGoal]
     );
+
+    // Update match score based on goal_scorers
+    const match = await query(`SELECT home_team_id, away_team_id FROM matches WHERE id = $1`, [matchId]);
+    if (match.rows[0]) {
+      const { home_team_id, away_team_id } = match.rows[0];
+      const scorers = await query(`SELECT team_id, is_own_goal, goals_count FROM goal_scorers WHERE match_id = $1`, [matchId]);
+      let homeScore = 0, awayScore = 0;
+      for (const s of scorers.rows) {
+        if (s.is_own_goal) {
+          // Own goal scores for the opposing team
+          if (s.team_id === home_team_id) awayScore += s.goals_count;
+          else homeScore += s.goals_count;
+        } else {
+          if (s.team_id === home_team_id) homeScore += s.goals_count;
+          else awayScore += s.goals_count;
+        }
+      }
+      await query(`UPDATE matches SET home_score = $2, away_score = $3 WHERE id = $1`, [matchId, homeScore, awayScore]);
+    }
+
     return result.rows[0];
   }
 
@@ -137,6 +200,11 @@ export class MatchModel {
       `INSERT INTO substitutions (match_id, team_id, player_out_id, player_in_id, minute) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [matchId, teamId, playerOutId, playerInId, minute || null]
     );
+
+    // Swap is_starter: player out becomes reserve, player in becomes starter
+    await query(`UPDATE team_players SET is_starter = false WHERE team_id = $1 AND player_id = $2`, [teamId, playerOutId]);
+    await query(`UPDATE team_players SET is_starter = true WHERE team_id = $1 AND player_id = $2`, [teamId, playerInId]);
+
     return result.rows[0];
   }
 

@@ -315,6 +315,29 @@ export class TournamentController {
   }
 
   /**
+   * PATCH /api/tournaments/:id/referees
+   */
+  static async updateReferees(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { referees } = req.body;
+
+      if (!Array.isArray(referees) || referees.length > 3) {
+        return res.status(400).json({ success: false, error: 'referees must be an array of max 3 strings' });
+      }
+
+      const tournament = await TournamentModel.updateReferees(id, referees.map((r: any) => String(r).trim()).filter(Boolean));
+      if (!tournament) {
+        return res.status(404).json({ success: false, error: 'Tournament not found' });
+      }
+
+      res.json({ success: true, data: tournament });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Failed to update referees' });
+    }
+  }
+
+  /**
    * GET /api/tournaments/search?q=...
    * Search tournaments by name
    */

@@ -45,6 +45,7 @@ export interface Tournament {
   share_code: string;
   status: TournamentStatus;
   config: TournamentConfig;
+  referees: string[];
   created_at: Date;
 }
 
@@ -100,6 +101,7 @@ export interface Team {
   tournament_id: string;
   name: string;
   logo_url: string | null;
+  coach_name: string | null;
   created_at: Date;
 }
 
@@ -115,6 +117,8 @@ export interface TeamPlayer {
   id: string;
   team_id: string;
   player_id: string;
+  jersey_number: number | null;
+  is_starter: boolean;
 }
 
 // ========================================
@@ -246,12 +250,14 @@ export interface CreateTournamentRequest {
   name: string;
   format_type: TournamentFormatType;
   config: TournamentConfig;
+  referees?: string[];
 }
 
 export interface CreateTeamRequest {
   name: string;
   logo_url?: string;
-  player_ids?: string[]; // Opcjonalnie przypisz zawodników od razu
+  coach_name?: string;
+  player_ids?: string[];
 }
 
 export interface CreatePlayerRequest {

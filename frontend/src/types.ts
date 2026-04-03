@@ -2,10 +2,12 @@ export interface Tournament {
   id: string;
   name: string;
   description?: string;
-  format: 'league' | 'knockout';
+  format?: string;
+  format_type?: string;
   status: 'draft' | 'active' | 'completed';
   share_code: string;
-  is_public: boolean;
+  is_public?: boolean;
+  referees?: string[];
   created_at: string;
 }
 
@@ -13,6 +15,7 @@ export interface Team {
   id: string;
   name: string;
   logo_url?: string;
+  coach_name?: string;
 }
 
 export interface TeamWithPlayers extends Team {

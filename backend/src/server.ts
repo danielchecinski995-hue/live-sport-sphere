@@ -4,6 +4,7 @@
  */
 
 import express, { Request, Response, NextFunction } from 'express';
+import path from 'path';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { pool } from './config/database';
@@ -279,12 +280,16 @@ app.post('/api/seed/full-reset', async (req: Request, res: Response) => {
   }
 });
 
-// 404 handler
-app.use((req: Request, res: Response) => {
-  res.status(404).json({
-    error: 'Not Found',
-    message: `Route ${req.method} ${req.path} not found`
-  });
+// Serve frontend static files
+const publicDir = path.join(__dirname, '..', 'public');
+app.use(express.static(publicDir));
+
+// SPA fallback — serve index.html for non-API routes
+app.get('*', (req: Request, res: Response, next: NextFunction) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'Not Found', message: `Route ${req.method} ${req.path} not found` });
+  }
+  res.sendFile(path.join(publicDir, 'index.html'));
 });
 
 // Global error handler

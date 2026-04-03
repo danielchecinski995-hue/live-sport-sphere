@@ -69,6 +69,7 @@ router.put('/teams/:id/players', TeamController.setPlayers);
  * @desc    Remove player from team
  * @access  Public (później będzie require auth)
  */
+router.put('/teams/:id/players/:playerId', TeamController.updatePlayer);
 router.delete('/teams/:id/players/:playerId', TeamController.removePlayer);
 
 export default router;

@@ -72,6 +72,8 @@ export const tournamentsAPI = {
   updateStatus: (id: string, status: string) =>
     fetchAPI(`/tournaments/${id}/status`, { method: 'PATCH', body: { status } }),
   delete: (id: string) => fetchAPI(`/tournaments/${id}`, { method: 'DELETE' }),
+  updateReferees: (id: string, referees: string[]) =>
+    fetchAPI(`/tournaments/${id}/referees`, { method: 'PATCH', body: { referees } }),
 };
 
 // ========================================
@@ -83,13 +85,19 @@ export const teamsAPI = {
     fetchData(`/tournaments/${tournamentId}/teams`),
   getById: (id: string, includePlayers = false) =>
     fetchAPI(`/teams/${id}?include_players=${includePlayers}`),
-  create: (tournamentId: string, data: { name: string; player_ids?: string[] }) =>
+  create: (tournamentId: string, data: { name: string; logo_url?: string; coach_name?: string; player_ids?: string[] }) =>
     fetchAPI(`/tournaments/${tournamentId}/teams`, { method: 'POST', body: data }),
+  update: (id: string, data: { name: string; logo_url?: string; coach_name?: string }) =>
+    fetchAPI(`/teams/${id}`, { method: 'PUT', body: data }),
+  addPlayer: (teamId: string, data: { player_id: string; jersey_number?: number; is_starter?: boolean }) =>
+    fetchAPI(`/teams/${teamId}/players`, { method: 'POST', body: data }),
+  updatePlayer: (teamId: string, playerId: string, data: { jersey_number?: number; is_starter?: boolean }) =>
+    fetchAPI(`/teams/${teamId}/players/${playerId}`, { method: 'PUT', body: data }),
+  removePlayer: (teamId: string, playerId: string) =>
+    fetchAPI(`/teams/${teamId}/players/${playerId}`, { method: 'DELETE' }),
   setPlayers: (teamId: string, playerIds: string[]) =>
-    fetchAPI(`/teams/${teamId}/players`, {
-      method: 'PUT',
-      body: { player_ids: playerIds },
-    }),
+    fetchAPI(`/teams/${teamId}/players`, { method: 'PUT', body: { player_ids: playerIds } }),
+  getPlayers: (teamId: string) => fetchData(`/teams/${teamId}/players`),
   delete: (id: string) => fetchAPI(`/teams/${id}`, { method: 'DELETE' }),
 };
 
@@ -98,6 +106,10 @@ export const teamsAPI = {
 // ========================================
 
 export const matchesAPI = {
+  create: (tournamentId: string, data: { home_team_id: string; away_team_id: string; match_date?: string }) =>
+    fetchAPI(`/tournaments/${tournamentId}/matches`, { method: 'POST', body: data }),
+  delete: (matchId: string) =>
+    fetchAPI(`/matches/${matchId}`, { method: 'DELETE' }),
   getById: (id: string) => fetchData(`/matches/${id}`),
   getTeams: (id: string) => fetchData(`/matches/${id}/teams`),
   getGoalScorers: (id: string) => fetchData(`/matches/${id}/goal-scorers`),

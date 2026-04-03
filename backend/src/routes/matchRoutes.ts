@@ -5,10 +5,12 @@ const router = Router();
 
 // Tournament-scoped routes
 router.get('/tournaments/:tournamentId/matches', MatchController.getByTournament);
+router.post('/tournaments/:tournamentId/matches', MatchController.create);
 router.get('/tournaments/:tournamentId/standings', MatchController.getStandings);
 
 // Match routes
 router.get('/matches/:id', MatchController.getById);
+router.delete('/matches/:id', MatchController.delete);
 router.put('/matches/:id/result', MatchController.updateResult);
 router.put('/matches/:id/status', MatchController.updateStatus);
 router.get('/matches/:id/teams', MatchController.getMatchTeams);

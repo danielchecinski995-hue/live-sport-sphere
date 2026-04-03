@@ -10,6 +10,7 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
+  const [formatType, setFormatType] = useState('league');
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -38,7 +39,7 @@ export function Dashboard() {
     if (!newName.trim()) return;
     try {
       setCreating(true);
-      await tournamentsAPI.create({ name: newName, format_type: 'league', config: { points: { win: 3, draw: 1, loss: 0 } } });
+      await tournamentsAPI.create({ name: newName, format_type: formatType, config: { points: { win: 3, draw: 1, loss: 0 } } });
       setNewName('');
       setShowCreate(false);
       loadTournaments();
@@ -112,6 +113,17 @@ export function Dashboard() {
               style={styles.input}
               autoFocus
             />
+            <select
+              value={formatType}
+              onChange={(e) => setFormatType(e.target.value)}
+              style={{ ...styles.input, cursor: 'pointer' }}
+            >
+              <option value="league">Liga (kazdy z kazdym)</option>
+              <option value="knockout">Puchar (system pucharowy)</option>
+              <option value="groups_playoff">Grupy + Playoff</option>
+              <option value="league_playoff">Liga + Playoff</option>
+              <option value="swiss">System szwajcarski</option>
+            </select>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="submit" disabled={creating || !newName.trim()} style={styles.submitBtn}>
                 {creating ? 'Tworzenie...' : 'Utworz'}

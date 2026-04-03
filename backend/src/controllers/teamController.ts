@@ -5,6 +5,7 @@
 
 import { Request, Response } from 'express';
 import { TeamModel } from '../models/teamModel';
+import { pool } from '../config/database';
 import { CreateTeamRequest } from '../types';
 
 export class TeamController {
@@ -89,28 +90,17 @@ export class TeamController {
   static async create(req: Request, res: Response) {
     try {
       const { tournamentId } = req.params;
-      const { name, logo_url, player_ids }: CreateTeamRequest = req.body;
+      const { name, logo_url, coach_name, player_ids }: CreateTeamRequest = req.body;
 
-      // Walidacja
-      if (!name) {
-        return res.status(400).json({
-          success: false,
-          error: 'Team name is required'
-        });
+      if (!name || name.trim().length === 0) {
+        return res.status(400).json({ success: false, error: 'Team name is required' });
       }
 
-      if (name.trim().length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'Team name cannot be empty'
-        });
-      }
-
-      // Create team
       const team = await TeamModel.create(
         tournamentId,
         name.trim(),
-        logo_url
+        logo_url,
+        coach_name
       );
 
       // Assign players if provided
@@ -118,7 +108,37 @@ export class TeamController {
         await TeamModel.setPlayers(team.id, player_ids);
       }
 
-      // Return team with players
+      // Ensure phase exists for this tournament, then add standing for new team
+      let phaseResult = await pool.query(
+        `SELECT id FROM phases WHERE tournament_id = $1 LIMIT 1`,
+        [tournamentId]
+      );
+      if (phaseResult.rows.length === 0) {
+        phaseResult = await pool.query(
+          `INSERT INTO phases (tournament_id, phase_type, phase_order, status)
+           VALUES ($1, 'group_stage', 1, 'active') RETURNING id`,
+          [tournamentId]
+        );
+      }
+      const phaseId = phaseResult.rows[0].id;
+
+      // Add standing row for this team (0 points, 0 matches)
+      await pool.query(
+        `INSERT INTO standings (id, phase_id, team_id, points, wins, draws, losses, goals_for, goals_against, position)
+         VALUES (uuid_generate_v4(), $1, $2, 0, 0, 0, 0, 0, 0, 0)
+         ON CONFLICT DO NOTHING`,
+        [phaseId, team.id]
+      );
+
+      // Update positions based on current team count
+      await pool.query(
+        `UPDATE standings SET position = sub.rn
+         FROM (SELECT id, ROW_NUMBER() OVER (ORDER BY points DESC, goal_difference DESC, goals_for DESC) as rn
+               FROM standings WHERE phase_id = $1) sub
+         WHERE standings.id = sub.id`,
+        [phaseId]
+      );
+
       const teamWithPlayers = await TeamModel.findByIdWithPlayers(team.id);
 
       res.status(201).json({
@@ -143,16 +163,13 @@ export class TeamController {
   static async update(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { name, logo_url }: CreateTeamRequest = req.body;
+      const { name, logo_url, coach_name }: CreateTeamRequest = req.body;
 
       if (!name) {
-        return res.status(400).json({
-          success: false,
-          error: 'Team name is required'
-        });
+        return res.status(400).json({ success: false, error: 'Team name is required' });
       }
 
-      const team = await TeamModel.update(id, name.trim(), logo_url);
+      const team = await TeamModel.update(id, name.trim(), logo_url, coach_name);
 
       if (!team) {
         return res.status(404).json({
@@ -184,6 +201,9 @@ export class TeamController {
     try {
       const { id } = req.params;
 
+      // Remove standings for this team first
+      await pool.query(`DELETE FROM standings WHERE team_id = $1`, [id]);
+
       const deleted = await TeamModel.delete(id);
 
       if (!deleted) {
@@ -214,16 +234,13 @@ export class TeamController {
   static async addPlayer(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { player_id } = req.body;
+      const { player_id, jersey_number, is_starter } = req.body;
 
       if (!player_id) {
-        return res.status(400).json({
-          success: false,
-          error: 'player_id is required'
-        });
+        return res.status(400).json({ success: false, error: 'player_id is required' });
       }
 
-      await TeamModel.addPlayer(id, player_id);
+      await TeamModel.addPlayer(id, player_id, jersey_number, is_starter);
 
       const players = await TeamModel.getPlayers(id);
 
@@ -305,6 +322,26 @@ export class TeamController {
         error: 'Failed to set team players',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
+    }
+  }
+
+  /**
+   * PUT /api/teams/:id/players/:playerId
+   * Update player assignment (jersey, starter)
+   */
+  static async updatePlayer(req: Request, res: Response) {
+    try {
+      const { id, playerId } = req.params;
+      const { jersey_number, is_starter } = req.body;
+
+      const updated = await TeamModel.updatePlayer(id, playerId, jersey_number ?? null, is_starter ?? false);
+      if (!updated) {
+        return res.status(404).json({ success: false, error: 'Player not found in team' });
+      }
+
+      res.json({ success: true, message: 'Player updated' });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Failed to update player' });
     }
   }
 

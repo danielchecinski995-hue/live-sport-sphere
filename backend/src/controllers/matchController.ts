@@ -111,6 +111,38 @@ export class MatchController {
     }
   }
 
+  static async create(req: Request, res: Response) {
+    try {
+      const { tournamentId } = req.params;
+      const { home_team_id, away_team_id, match_date } = req.body;
+
+      if (!home_team_id || !away_team_id) {
+        return res.status(400).json({ success: false, error: 'home_team_id and away_team_id are required' });
+      }
+      if (home_team_id === away_team_id) {
+        return res.status(400).json({ success: false, error: 'Teams must be different' });
+      }
+
+      const match = await MatchModel.create(tournamentId, home_team_id, away_team_id, match_date);
+
+      // Fetch with team names
+      const full = await MatchModel.findById(match.id);
+      res.status(201).json({ success: true, data: full });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Failed to create match', details: error instanceof Error ? error.message : 'Unknown' });
+    }
+  }
+
+  static async delete(req: Request, res: Response) {
+    try {
+      const deleted = await MatchModel.delete(req.params.id);
+      if (!deleted) return res.status(404).json({ success: false, error: 'Match not found' });
+      res.json({ success: true, message: 'Match deleted' });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Failed to delete match', details: error instanceof Error ? error.message : 'Unknown' });
+    }
+  }
+
   static async getStandings(req: Request, res: Response) {
     try {
       const { tournamentId } = req.params;
